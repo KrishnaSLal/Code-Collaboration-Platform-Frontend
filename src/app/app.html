@@ -1,0 +1,35 @@
+<div class="app-shell">
+  <header class="topbar">
+    <a class="brand" routerLink="/">
+      <span class="brand-mark">CS</span>
+      <span>
+        <strong>CodeSync</strong>
+        <small>Code together. Build faster.</small>
+      </span>
+    </a>
+
+    <nav class="nav-links">
+      <a routerLink="/" routerLinkActive="active" [routerLinkActiveOptions]="{ exact: true }">Discover</a>
+      <a *ngIf="authService.isLoggedIn()" routerLink="/dashboard" routerLinkActive="active">Dashboard</a>
+      <a *ngIf="!authService.isLoggedIn()" routerLink="/login" routerLinkActive="active">Login</a>
+      <a *ngIf="!authService.isLoggedIn()" routerLink="/admin-login" routerLinkActive="active">Admin login</a>
+      <a *ngIf="!authService.isLoggedIn()" routerLink="/register" routerLinkActive="active">Register</a>
+    </nav>
+
+    <div class="account-chip" *ngIf="authService.currentUser() as user; else guestState">
+      <div>
+        <strong>{{ user.fullName }}</strong>
+        <small>{{ user.email }}</small>
+      </div>
+      <button type="button" class="ghost-button" (click)="logout()">Logout</button>
+    </div>
+
+    <ng-template #guestState>
+      <a class="primary-link" routerLink="/register">Start building</a>
+    </ng-template>
+  </header>
+
+  <main class="page-shell">
+    <router-outlet></router-outlet>
+  </main>
+</div>

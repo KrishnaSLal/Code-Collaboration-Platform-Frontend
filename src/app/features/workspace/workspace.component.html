@@ -1,0 +1,357 @@
+<section class="card state" *ngIf="loading">Loading workspace...</section>
+<section class="card state error" *ngIf="!loading && errorMessage">{{ errorMessage }}</section>
+
+<ng-container *ngIf="!loading && project">
+  <section class="workspace-shell">
+  <section class="workspace-header">
+    <div>
+      <p class="eyebrow">{{ project.visibility }} project</p>
+      <h1>{{ project.projectName }}</h1>
+      <p>{{ project.description || 'No description yet.' }}</p>
+    </div>
+
+    <div class="header-actions">
+      <div class="summary-row">
+        <span>{{ project.language }}</span>
+        <span>{{ files.length }} nodes</span>
+        <span>{{ snapshots.length }} snapshots</span>
+        <span>{{ sessions.length }} sessions</span>
+      </div>
+
+      <button type="button" class="danger-button" *ngIf="isOwner" (click)="deleteProject()">Delete project</button>
+    </div>
+  </section>
+
+  <section class="guest-banner" *ngIf="isReadOnly">
+    <strong>Guest mode is active.</strong>
+    <p>You can browse the file tree and read code in public projects, but editing, execution, snapshots, comments, and collaboration are available only after login.</p>
+  </section>
+
+  <section class="guest-banner" *ngIf="mustJoinActiveSession">
+    <strong>Active collaboration session.</strong>
+    <p>Join the session before editing files, running code, creating snapshots, or adding review comments.</p>
+  </section>
+
+  <section class="workspace-grid" [class.guest-layout]="isReadOnly">
+    <aside class="sidebar">
+      <div class="section-head">
+        <h2>Explorer</h2>
+        <span>{{ filteredFiles.length }} items</span>
+      </div>
+
+      <input type="search" [(ngModel)]="projectSearch" (input)="filterFiles()" placeholder="Search files and paths" />
+
+      <div class="create-row" *ngIf="canModifyWorkspace">
+        <input type="text" [(ngModel)]="newFileName" placeholder="New file name" />
+        <select [(ngModel)]="newFileLanguage">
+          <option *ngFor="let language of supportedLanguages" [value]="language.language">
+            {{ language.language }}
+          </option>
+          <option *ngIf="!supportedLanguages.length">Java</option>
+        </select>
+        <button type="button" class="secondary-button" (click)="createFile()">Add file</button>
+      </div>
+
+      <div class="create-row" *ngIf="canModifyWorkspace">
+        <input type="text" [(ngModel)]="newFolderName" placeholder="New folder name" />
+        <button type="button" class="secondary-button" (click)="createFolder()">Add folder</button>
+      </div>
+
+      <button
+        type="button"
+        class="file-link"
+        *ngFor="let file of filteredFiles"
+        [class.active]="selectedFile?.fileId === file.fileId"
+        (click)="selectFile(file)"
+      >
+        <span>{{ file.folder ? 'DIR' : 'FILE' }}</span>
+        <strong>{{ file.path }}</strong>
+      </button>
+    </aside>
+
+    <section class="main-column">
+      <article class="editor-card">
+        <div class="section-head">
+          <div>
+            <h2>{{ selectedFile?.name || 'No file selected' }}</h2>
+            <p class="muted">{{ selectedFile?.path || 'Choose a file to view its contents.' }}</p>
+          </div>
+
+          <div class="button-row">
+            <button type="button" class="secondary-button" *ngIf="canModifyWorkspace && selectedFile" (click)="renameSelectedFile()">
+              Rename
+            </button>
+            <button type="button" class="secondary-button" *ngIf="canModifyWorkspace && selectedFile" (click)="moveSelectedFile()">
+              Move
+            </button>
+            <button type="button" class="secondary-button" *ngIf="canModifyWorkspace && selectedFile" (click)="deleteSelectedFile()">
+              Delete
+            </button>
+            <button type="button" class="primary-button" *ngIf="canModifyWorkspace && selectedFile && !selectedFile.folder" (click)="saveFile()">
+              Save content
+            </button>
+          </div>
+        </div>
+
+        <div class="editor-frame">
+          <div class="editor-tab">
+            <span>{{ selectedFile?.name || 'untitled' }}</span>
+            <small>{{ selectedFile?.language || project.language }}</small>
+          </div>
+
+          <div class="editor-body">
+            <div class="cursor-layer" *ngIf="editorCursorIndicators.length">
+              <span
+                class="collab-cursor"
+                *ngFor="let cursor of editorCursorIndicators"
+                [style.left.px]="cursor.left"
+                [style.top.px]="cursor.top"
+                [style.height.px]="cursor.height"
+                [style.--cursor-color]="cursor.color"
+              >
+                <span class="collab-cursor-label">{{ cursor.label }}</span>
+              </span>
+            </div>
+
+            <textarea
+              #codeEditor
+              class="editor"
+              [readOnly]="isEditorReadOnly"
+              [(ngModel)]="editorContent"
+              (ngModelChange)="onEditorContentChange($event)"
+              (input)="updateCursor()"
+              (focus)="updateCursor()"
+              (blur)="clearLocalEditorCursor()"
+              (keydown)="handleEditorKeydown($event)"
+              (click)="updateCursor()"
+              (keyup)="updateCursor()"
+              (mouseup)="updateCursor()"
+              (select)="updateCursor()"
+              (scroll)="refreshEditorCursorIndicators()"
+              spellcheck="false"
+              autocapitalize="off"
+              autocomplete="off"
+              placeholder="File content will appear here"
+            ></textarea>
+          </div>
+        </div>
+
+        <div class="editor-capabilities" *ngIf="canModifyWorkspace">
+          <span>Syntax highlighting</span>
+          <span>Auto-indent</span>
+          <span>Bracket matching</span>
+          <span>{{ realtimeConnected ? 'Live collaboration' : 'Cursor presence' }}</span>
+        </div>
+
+        <p class="guest-note" *ngIf="isReadOnly">Read-only preview for guests.</p>
+        <p class="guest-note" *ngIf="mustJoinActiveSession">Read-only until you join the active session.</p>
+        <p class="success" *ngIf="saveMessage">{{ saveMessage }}</p>
+      </article>
+
+      <article class="tool-panel" *ngIf="selectedFile && !selectedFile.folder && canModifyWorkspace">
+        <div class="section-head">
+          <h2>Execution</h2>
+          <button type="button" class="primary-button" [disabled]="paymentLoading" (click)="runCode()">
+            {{ paymentLoading ? 'Opening payment...' : 'Run code' }}
+          </button>
+        </div>
+
+        <p class="muted" *ngIf="!hasExecutionPass">
+          {{ remainingFreeRuns }} of {{ freeExecutionLimit }} free runs remaining for this file.
+        </p>
+        <p class="success" *ngIf="hasExecutionPass">Execution pass active. Unlimited code runs enabled.</p>
+        <p class="error" *ngIf="executionLimitMessage">{{ executionLimitMessage }}</p>
+        <p class="success" *ngIf="paymentMessage">{{ paymentMessage }}</p>
+        <button
+          type="button"
+          class="primary-button"
+          *ngIf="!hasExecutionPass && selectedFileExecutionCount >= freeExecutionLimit"
+          [disabled]="paymentLoading"
+          (click)="startExecutionPassPayment()"
+        >
+          {{ paymentLoading ? 'Opening Razorpay...' : 'Pay with Razorpay' }}
+        </button>
+
+        <textarea [(ngModel)]="stdin" rows="4" placeholder="Optional stdin input"></textarea>
+
+        <div class="execution-list" *ngIf="executions.length; else noExecutions">
+          <div class="execution-card" *ngFor="let execution of executions | slice: 0 : 5">
+            <div class="execution-head">
+              <strong>{{ execution.language }} | {{ execution.status }}</strong>
+              <button
+                type="button"
+                class="secondary-button"
+                *ngIf="execution.status === 'QUEUED' || execution.status === 'RUNNING'"
+                (click)="cancelExecution(execution.jobId)"
+              >
+                Cancel
+              </button>
+            </div>
+            <pre>{{ execution.stdout || 'No stdout yet.' }}</pre>
+            <pre class="stderr" *ngIf="execution.stderr">{{ execution.stderr }}</pre>
+          </div>
+        </div>
+
+        <ng-template #noExecutions>
+          <p class="muted">No executions submitted for this project yet.</p>
+        </ng-template>
+      </article>
+
+      <article class="tool-panel" *ngIf="selectedFile && !selectedFile.folder && canModifyWorkspace">
+        <div class="section-head">
+          <h2>Snapshots and diff</h2>
+          <button type="button" class="primary-button" (click)="createSnapshot()">Create snapshot</button>
+        </div>
+
+        <div class="split-row">
+          <input type="text" [(ngModel)]="snapshotMessage" placeholder="Commit message" />
+          <input type="text" [(ngModel)]="branchName" placeholder="Branch name" />
+        </div>
+
+        <div class="split-row">
+          <select [(ngModel)]="diffSnapshotOne">
+            <option value="">Select snapshot A</option>
+            <option *ngFor="let snapshot of snapshots" [value]="snapshot.snapshotId">
+              {{ snapshot.message }} | {{ snapshot.snapshotId }}
+            </option>
+          </select>
+
+          <select [(ngModel)]="diffSnapshotTwo">
+            <option value="">Select snapshot B</option>
+            <option *ngFor="let snapshot of snapshots" [value]="snapshot.snapshotId">
+              {{ snapshot.message }} | {{ snapshot.snapshotId }}
+            </option>
+          </select>
+        </div>
+
+        <div class="button-row">
+          <button type="button" class="secondary-button" (click)="loadDiff()">Compare</button>
+          <button type="button" class="secondary-button" (click)="createBranch()">Create branch from A</button>
+          <input type="text" [(ngModel)]="tagName" placeholder="Tag selected snapshot" />
+          <button type="button" class="secondary-button" (click)="tagSnapshot()">Tag snapshot A</button>
+        </div>
+
+        <pre *ngIf="diffResult" class="diff-box">{{ diffResult }}</pre>
+
+        <div class="snapshot-list">
+          <div class="snapshot-card" *ngFor="let snapshot of snapshots | slice: 0 : 6">
+            <div>
+              <strong>{{ snapshot.message }}</strong>
+              <p>
+                {{ snapshot.branch }} by {{ getSnapshotAuthorName(snapshot) }} |
+                {{ snapshot.createdAt | date: 'medium' }}
+                <span *ngIf="snapshot.tag">| {{ snapshot.tag }}</span>
+              </p>
+            </div>
+            <button type="button" class="secondary-button" (click)="restoreSnapshot(snapshot.snapshotId)">
+              Restore
+            </button>
+          </div>
+        </div>
+      </article>
+    </section>
+
+    <aside class="right-column" *ngIf="!isReadOnly">
+      <article class="side-panel">
+        <div class="section-head">
+          <h2>Review comments</h2>
+          <span>{{ comments.length }}</span>
+        </div>
+
+        <div class="create-row" *ngIf="canModifyWorkspace && selectedFile && !selectedFile.folder">
+          <input type="number" [(ngModel)]="commentLineNumber" placeholder="Line number" />
+          <textarea rows="3" [(ngModel)]="commentContent" placeholder="Add inline review comment"></textarea>
+          <button type="button" class="secondary-button" (click)="addComment()">Add comment</button>
+        </div>
+
+        <div class="comment-list" *ngIf="comments.length; else noComments">
+          <div class="comment-card" *ngFor="let comment of comments">
+            <div>
+              <strong>Line {{ comment.lineNumber || '-' }}</strong>
+              <p>{{ comment.content }}</p>
+            </div>
+            <button type="button" class="secondary-button" *ngIf="canModifyWorkspace" (click)="toggleResolve(comment)">
+              {{ comment.resolved ? 'Reopen' : 'Resolve' }}
+            </button>
+            <div class="reply-row" *ngIf="canModifyWorkspace">
+              <input type="text" [(ngModel)]="replyContentByCommentId[comment.commentId]" placeholder="Reply to this thread" />
+              <button type="button" class="secondary-button" (click)="replyToComment(comment)">Reply</button>
+            </div>
+          </div>
+        </div>
+
+        <ng-template #noComments>
+          <p class="muted">No comments on this file yet.</p>
+        </ng-template>
+      </article>
+
+      <article class="side-panel" *ngIf="selectedFile && !selectedFile.folder">
+        <div class="section-head">
+          <h2>Collaboration</h2>
+          <button type="button" class="primary-button" *ngIf="canModifyWorkspace" (click)="createSession()">Start session</button>
+        </div>
+
+        <div class="create-row" *ngIf="!isReadOnly">
+          <input type="number" [(ngModel)]="maxParticipants" placeholder="Max participants" />
+          <label class="checkbox">
+            <input type="checkbox" [(ngModel)]="passwordProtected" />
+            <span>Password protect</span>
+          </label>
+          <input type="text" [(ngModel)]="sessionPassword" [disabled]="!passwordProtected" placeholder="Session password" />
+        </div>
+
+        <div class="session-list" *ngIf="sessions.length; else noSessions">
+          <div class="session-card" *ngFor="let session of sessions">
+            <div>
+              <strong>{{ session.sessionId }}</strong>
+              <p>{{ session.status }} | {{ session.language }}</p>
+            </div>
+            <div class="button-row">
+              <button type="button" class="secondary-button" *ngIf="!isReadOnly" (click)="joinSession(session.sessionId)">Join</button>
+              <button type="button" class="secondary-button" *ngIf="!isReadOnly" (click)="copySessionLink(session)">Copy link</button>
+              <button type="button" class="secondary-button" *ngIf="isSessionHost && session.status === 'ACTIVE'" (click)="endSession(session.sessionId)">
+                End
+              </button>
+            </div>
+          </div>
+        </div>
+
+        <ng-template #noSessions>
+          <p class="muted">No collaboration sessions yet.</p>
+        </ng-template>
+
+        <div class="participant-list" *ngIf="participants.length">
+          <div class="participant-card" *ngFor="let participant of participants">
+            <span class="swatch" [style.background]="participant.color"></span>
+            <div>
+              <strong>{{ getParticipantDisplayName(participant) }}</strong>
+              <p>{{ participant.role }} | {{ participant.cursorLine || 0 }}:{{ participant.cursorCol || 0 }}</p>
+            </div>
+            <button
+              type="button"
+              class="secondary-button"
+              *ngIf="isSessionHost && participant.userId !== authService.currentUser()?.userId"
+              (click)="kickParticipant(participant)"
+            >
+              Kick
+            </button>
+          </div>
+        </div>
+
+        <div class="create-row" *ngIf="!isReadOnly && activeSession">
+          <input
+            type="text"
+            list="invite-recipient-options"
+            [(ngModel)]="inviteRecipient"
+            placeholder="Invite by username"
+          />
+          <datalist id="invite-recipient-options">
+            <option *ngFor="let recipient of inviteRecipientOptions" [value]="recipient"></option>
+          </datalist>
+          <button type="button" class="secondary-button" (click)="sendInvite()">Send invite notification</button>
+        </div>
+      </article>
+    </aside>
+  </section>
+  </section>
+</ng-container>

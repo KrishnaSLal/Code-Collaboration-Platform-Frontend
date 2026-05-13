@@ -1,0 +1,196 @@
+<section class="dashboard-grid">
+  <article class="card intro-panel">
+    <p class="eyebrow">Developer dashboard</p>
+    <h1>{{ authService.currentUser()?.fullName }}, your browser-based workspace is ready.</h1>
+    <p>
+      Create a project, continue one you own, or jump into public repos for forking and review.
+      This screen maps directly to the case-study developer workflow.
+    </p>
+
+    <div class="stats-grid" *ngIf="executionStats">
+      <div>
+        <strong>{{ myProjects.length }}</strong>
+        <span>Your projects</span>
+      </div>
+      <div>
+        <strong>{{ unreadCount }}</strong>
+        <span>Unread notifications</span>
+      </div>
+      <div>
+        <strong>{{ executionStats.totalExecutions }}</strong>
+        <span>Total code runs</span>
+      </div>
+      <div>
+        <strong>{{ executionStats.completedExecutions }}</strong>
+        <span>Completed runs</span>
+      </div>
+    </div>
+  </article>
+
+  <article class="card form-panel">
+    <h2>Create project</h2>
+    <form [formGroup]="createProjectForm" (ngSubmit)="createProject()">
+      <label>
+        <span>Name</span>
+        <input type="text" formControlName="projectName" placeholder="Collaborative Java workspace" />
+      </label>
+
+      <label>
+        <span>Description</span>
+        <textarea
+          rows="4"
+          formControlName="description"
+          placeholder="Describe the goal, contributors, or feature branch purpose"
+        ></textarea>
+      </label>
+
+      <div class="split-row">
+        <label>
+          <span>Language</span>
+          <select formControlName="language">
+            <option *ngFor="let language of supportedLanguages" [value]="language.language">
+              {{ language.language }}
+            </option>
+            <option *ngIf="!supportedLanguages.length">Java</option>
+          </select>
+        </label>
+
+        <label>
+          <span>Visibility</span>
+          <select formControlName="visibility">
+            <option value="PUBLIC">Public</option>
+            <option value="PRIVATE">Private</option>
+          </select>
+        </label>
+      </div>
+
+      <button type="submit" class="primary-button" [disabled]="createProjectLoading">
+        {{ createProjectLoading ? 'Creating...' : 'Create and open workspace' }}
+      </button>
+    </form>
+
+    <p class="error" *ngIf="errorMessage">{{ errorMessage }}</p>
+  </article>
+</section>
+
+<section class="card billing-card">
+  <div>
+    <p class="eyebrow">Billing</p>
+    <h2>{{ hasExecutionPass ? 'CodeSync Pro' : 'Execution pass' }}</h2>
+    <p *ngIf="hasExecutionPass">Compile your code unlimitedly. Your Pro execution pass is active.</p>
+    <p *ngIf="!hasExecutionPass">
+      Run code {{ freeExecutionLimit }} times for free. Upgrade with Razorpay to continue running programs.
+    </p>
+  </div>
+  <div class="billing-actions" *ngIf="!hasExecutionPass">
+    <strong>₹499</strong>
+    <button type="button" class="primary-button" [disabled]="paymentLoading" (click)="startProPayment()">
+      {{ paymentLoading ? 'Opening Razorpay...' : 'Pay with Razorpay' }}
+    </button>
+  </div>
+  <div class="billing-actions" *ngIf="hasExecutionPass">
+    <span class="badge">Active</span>
+  </div>
+  <p class="success" *ngIf="paymentMessage">{{ paymentMessage }}</p>
+</section>
+
+<section class="content-grid">
+  <article class="card" *ngIf="loading">Loading your projects...</article>
+
+  <article class="card" *ngIf="!loading">
+    <div class="section-head">
+      <h2>Your projects</h2>
+      <a routerLink="/">Browse public feed</a>
+    </div>
+
+    <div class="list-stack" *ngIf="myProjects.length; else noProjects">
+      <div class="list-card" *ngFor="let project of myProjects">
+        <a class="project-summary" [routerLink]="['/projects', project.projectId]">
+          <div>
+            <strong>{{ project.projectName }}</strong>
+            <p>{{ project.description || 'No description yet.' }}</p>
+          </div>
+          <span>{{ project.language }}</span>
+        </a>
+
+        <div class="button-row">
+          <button type="button" class="danger-button" (click)="deleteProject(project)">Delete</button>
+        </div>
+      </div>
+    </div>
+
+    <ng-template #noProjects>
+      <p class="muted">No projects yet. Create one from the panel above to start editing and collaborating.</p>
+    </ng-template>
+  </article>
+
+  <article class="card">
+    <div class="section-head">
+      <h2>Notifications</h2>
+      <span class="badge">{{ unreadCount }} unread</span>
+    </div>
+
+    <div class="list-stack" *ngIf="notifications.length; else noNotifications">
+      <div class="list-card notification" *ngFor="let notification of notifications | slice: 0 : 6">
+        <div>
+          <strong>{{ notification.title }}</strong>
+          <p>{{ notification.message }}</p>
+        </div>
+        <button
+          type="button"
+          class="secondary-button"
+          *ngIf="notification.type === 'SESSION_INVITE' && notification.relatedId"
+          (click)="joinSessionFromNotification(notification)"
+        >
+          Join session
+        </button>
+        <button
+          type="button"
+          class="secondary-button"
+          *ngIf="!notification.isRead"
+          (click)="markAsRead(notification.notificationId)"
+        >
+          Mark read
+        </button>
+      </div>
+    </div>
+
+    <ng-template #noNotifications>
+      <p class="muted">No notifications yet.</p>
+    </ng-template>
+  </article>
+</section>
+
+<section class="card">
+  <div class="section-head">
+    <h2>Public projects worth exploring</h2>
+    <span>Star or fork from here</span>
+  </div>
+
+  <div class="public-grid">
+    <div class="public-card" *ngFor="let project of publicProjects">
+      <div>
+        <strong>{{ project.projectName }}</strong>
+        <p>{{ project.description || 'No description yet.' }}</p>
+      </div>
+      <div class="card-footer">
+        <span>{{ project.language }}</span>
+        <div class="button-row">
+          <button type="button" class="secondary-button icon-button" (click)="starProject(project.projectId)">
+            <svg viewBox="0 0 24 24" aria-hidden="true">
+              <path d="m12 2.8 2.84 5.75 6.35.92-4.59 4.48 1.08 6.32L12 17.28l-5.68 2.99 1.08-6.32-4.59-4.48 6.35-.92L12 2.8z" />
+            </svg>
+            <span>Star</span>
+          </button>
+          <button type="button" class="secondary-button icon-button" (click)="forkProject(project.projectId)">
+            <svg viewBox="0 0 24 24" aria-hidden="true">
+              <path d="M6 3.25a2.75 2.75 0 0 1 1 5.31v3.94A2.5 2.5 0 0 0 9.5 15H11v-3.44a2.75 2.75 0 1 1 2 0V15h1.5a2.5 2.5 0 0 0 2.5-2.5V8.56a2.75 2.75 0 1 1 1.5 0v3.94a4 4 0 0 1-4 4H13v.94a2.75 2.75 0 1 1-1.5 0v-.94H9.5a4 4 0 0 1-4-4V8.56A2.75 2.75 0 0 1 6 3.25ZM4.75 6A1.25 1.25 0 1 0 6 4.75 1.25 1.25 0 0 0 4.75 6Zm6 3a1.25 1.25 0 1 0 1.25-1.25A1.25 1.25 0 0 0 10.75 9Zm6-3A1.25 1.25 0 1 0 18 4.75 1.25 1.25 0 0 0 16.75 6Zm-6 14a1.25 1.25 0 1 0 1.25-1.25A1.25 1.25 0 0 0 10.75 20Z" />
+            </svg>
+            <span>Fork</span>
+          </button>
+          <a class="secondary-button" [routerLink]="['/projects', project.projectId]">Open</a>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>

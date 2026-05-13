@@ -1,0 +1,112 @@
+<section class="hero card" *ngIf="!guestMode">
+  <div>
+    <p class="eyebrow">Smart collaboration Suite</p>
+    <h1>
+      <span>Code Together.</span>
+      <span>Build Faster.</span>
+      <span>Ship Smarter.</span>
+    </h1>
+    <p class="hero-copy">
+      Work in real time with your team, manage projects seamlessly, and track every change in one unified platform.
+    </p>
+
+    <div class="hero-actions">
+      <a class="primary-action" *ngIf="authService.isLoggedIn(); else guestActions" routerLink="/dashboard">
+        Open your dashboard
+      </a>
+      <ng-template #guestActions>
+        <a class="secondary-action" routerLink="/guest">Continue as guest</a>
+        <a class="primary-action" routerLink="/register">Create developer account</a>
+        <a class="secondary-action" routerLink="/admin-login">Admin login</a>
+      </ng-template>
+    </div>
+  </div>
+
+  <div class="hero-panel">
+    <h2>Supported runtimes</h2>
+    <div class="language-grid">
+      <span *ngFor="let language of languages">{{ language.language }} {{ language.version }}</span>
+    </div>
+  </div>
+</section>
+
+<ng-container *ngIf="guestMode">
+  <section class="guest-header card" *ngIf="guestMode">
+    <div>
+      <p class="eyebrow">Guest access</p>
+      <h1>
+        <span>Explore Public Projects.</span>
+        <span>Read Code Safely.</span>
+      </h1>
+      <p class="hero-copy">
+        Explore public developer workspaces, inspect project structures, and read source files instantly in secure read-only mode.
+      </p>
+    </div>
+
+    <div class="hero-actions">
+      <a class="primary-action" routerLink="/register">Create developer account</a>
+      <a class="secondary-action" routerLink="/login">Login to collaborate</a>
+    </div>
+  </section>
+
+  <section id="public-projects" class="filters card">
+    <div>
+      <h2>Browse public projects</h2>
+      <p>Guests can inspect project trees and open code files in read-only mode.</p>
+    </div>
+
+    <div class="filter-row">
+      <input
+        type="search"
+        [(ngModel)]="searchTerm"
+        (input)="applyFilters()"
+        placeholder="Search by name, language, owner username, or contributor"
+      />
+
+      <select [(ngModel)]="selectedLanguage" (change)="applyFilters()">
+        <option value="">All languages</option>
+        <option *ngFor="let language of languages" [value]="language.language">
+          {{ language.language }}
+        </option>
+      </select>
+    </div>
+  </section>
+
+  <section class="state card" *ngIf="loading">Loading public workspace feed...</section>
+  <section class="state card error" *ngIf="!loading && errorMessage">{{ errorMessage }}</section>
+
+  <section class="project-grid" *ngIf="!loading && !errorMessage">
+    <article class="project-card card" *ngFor="let project of filteredProjects">
+      <div class="project-meta">
+        <span class="pill">{{ project.language }}</span>
+        <span class="pill subdued">{{ project.visibility }}</span>
+      </div>
+
+      <h3>{{ project.projectName }}</h3>
+      <p>{{ project.description || 'No description added yet.' }}</p>
+
+      <div class="project-stats">
+        <span>{{ project.starCount }} stars</span>
+        <span>{{ project.forkCount }} forks</span>
+        <span>{{ getOwnerLabel(project) }}</span>
+      </div>
+
+      <div class="contributors">
+        <strong>Contributors</strong>
+        <div class="contributor-list">
+          <span *ngFor="let contributor of getContributorLabels(project)">{{ contributor }}</span>
+        </div>
+      </div>
+
+      <div class="project-actions">
+        <a class="secondary-action" [routerLink]="['/projects', project.projectId]">View file tree</a>
+        <a class="primary-action" [routerLink]="['/projects', project.projectId]">Read code</a>
+      </div>
+    </article>
+
+    <article class="card empty-state" *ngIf="!filteredProjects.length">
+      <h3>No projects match the current filters.</h3>
+      <p>Try clearing the language or search filter to broaden the results.</p>
+    </article>
+  </section>
+</ng-container>

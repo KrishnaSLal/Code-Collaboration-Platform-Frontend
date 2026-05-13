@@ -1,0 +1,10 @@
+.oauth-state {
+  min-height: calc(100vh - 9rem);
+  display: grid;
+  place-content: center;
+  text-align: center;
+}
+
+p {
+  color: #fca5a5;
+}

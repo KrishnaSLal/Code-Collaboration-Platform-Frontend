@@ -1,0 +1,78 @@
+<div class="auth-page">
+  <div class="auth-card">
+    <h1>Create account</h1>
+    <p class="subtitle">Register to create projects, collaborate live, run code, and manage snapshots in CodeSync.</p>
+
+    <form [formGroup]="registerForm" (ngSubmit)="onSubmit()">
+      <div class="form-group">
+        <label for="fullName">Full Name</label>
+        <input id="fullName" type="text" formControlName="fullName" placeholder="Enter your full name" />
+        <small class="error" *ngIf="fullName?.touched && fullName?.hasError('required')">Full name is required</small>
+        <small class="error" *ngIf="fullName?.touched && fullName?.hasError('minlength')">
+          Full name must be at least 3 characters
+        </small>
+      </div>
+
+      <div class="form-group">
+        <label for="email">Email</label>
+        <input id="email" type="email" formControlName="email" placeholder="Enter your email" />
+        <small class="error" *ngIf="email?.touched && email?.hasError('required')">Email is required</small>
+        <small class="error" *ngIf="email?.touched && email?.hasError('email')">Enter a valid email</small>
+      </div>
+
+      <div class="form-group">
+        <label for="password">Password</label>
+        <div class="password-field">
+          <input
+            id="password"
+            [type]="showPassword ? 'text' : 'password'"
+            formControlName="password"
+            placeholder="Enter your password"
+          />
+          <button
+            type="button"
+            class="password-toggle"
+            [attr.aria-label]="showPassword ? 'Hide password' : 'Show password'"
+            (click)="togglePasswordVisibility()"
+          >
+            <svg *ngIf="!showPassword" viewBox="0 0 24 24" aria-hidden="true">
+              <path d="M2 12s3.5-6 10-6 10 6 10 6-3.5 6-10 6S2 12 2 12z" />
+              <circle cx="12" cy="12" r="3" />
+            </svg>
+            <svg *ngIf="showPassword" viewBox="0 0 24 24" aria-hidden="true">
+              <path d="m3 3 18 18" />
+              <path d="M10.7 6.1A10.8 10.8 0 0 1 12 6c6.5 0 10 6 10 6a16.4 16.4 0 0 1-3.1 3.6" />
+              <path d="M6.5 6.7C3.6 8.5 2 12 2 12s3.5 6 10 6a10.5 10.5 0 0 0 4.4-.9" />
+              <path d="M9.9 9.9a3 3 0 0 0 4.2 4.2" />
+            </svg>
+          </button>
+        </div>
+        <small class="error" *ngIf="password?.touched && password?.hasError('required')">Password is required</small>
+        <small class="error" *ngIf="password?.touched && password?.hasError('minlength')">
+          Password must be at least 4 characters
+        </small>
+      </div>
+
+      <div class="form-group">
+        <label for="mobileNumber">Mobile Number</label>
+        <input id="mobileNumber" type="text" formControlName="mobileNumber" placeholder="Enter 10-digit mobile number" />
+        <small class="error" *ngIf="mobileNumber?.touched && mobileNumber?.hasError('required')">
+          Mobile number is required
+        </small>
+        <small class="error" *ngIf="mobileNumber?.touched && mobileNumber?.hasError('pattern')">
+          Enter a valid 10-digit mobile number
+        </small>
+      </div>
+
+      <div class="message success" *ngIf="successMessage">{{ successMessage }}</div>
+      <div class="message error-box" *ngIf="errorMessage">{{ errorMessage }}</div>
+
+      <button type="submit" [disabled]="loading">{{ loading ? 'Registering...' : 'Register' }}</button>
+    </form>
+
+    <p class="footer-text">
+      Already have an account?
+      <a routerLink="/login">Login</a>
+    </p>
+  </div>
+</div>

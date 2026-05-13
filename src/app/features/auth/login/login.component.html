@@ -1,0 +1,83 @@
+<div class="auth-page">
+  <div class="auth-card">
+    <h1>Welcome back</h1>
+    <p class="subtitle">Sign in to continue collaborating across projects, snapshots, runs, and live sessions.</p>
+
+    <form [formGroup]="loginForm" (ngSubmit)="onSubmit()">
+      <div class="form-group">
+        <label for="email">Email</label>
+        <input id="email" type="email" formControlName="email" placeholder="Enter your email" />
+        <small class="error" *ngIf="email?.touched && email?.hasError('required')">Email is required</small>
+        <small class="error" *ngIf="email?.touched && email?.hasError('email')">Enter a valid email</small>
+      </div>
+
+      <div class="form-group">
+        <label for="password">Password</label>
+        <div class="password-field">
+          <input
+            id="password"
+            [type]="showPassword ? 'text' : 'password'"
+            formControlName="password"
+            placeholder="Enter your password"
+          />
+          <button
+            type="button"
+            class="password-toggle"
+            [attr.aria-label]="showPassword ? 'Hide password' : 'Show password'"
+            (click)="togglePasswordVisibility()"
+          >
+            <svg *ngIf="!showPassword" viewBox="0 0 24 24" aria-hidden="true">
+              <path d="M2 12s3.5-6 10-6 10 6 10 6-3.5 6-10 6S2 12 2 12z" />
+              <circle cx="12" cy="12" r="3" />
+            </svg>
+            <svg *ngIf="showPassword" viewBox="0 0 24 24" aria-hidden="true">
+              <path d="m3 3 18 18" />
+              <path d="M10.7 6.1A10.8 10.8 0 0 1 12 6c6.5 0 10 6 10 6a16.4 16.4 0 0 1-3.1 3.6" />
+              <path d="M6.5 6.7C3.6 8.5 2 12 2 12s3.5 6 10 6a10.5 10.5 0 0 0 4.4-.9" />
+              <path d="M9.9 9.9a3 3 0 0 0 4.2 4.2" />
+            </svg>
+          </button>
+        </div>
+        <small class="error" *ngIf="password?.touched && password?.hasError('required')">Password is required</small>
+      </div>
+
+      <div class="forgot-password-link">
+        <a routerLink="/forgot-password">Forgot Password?</a>
+      </div>
+
+      <div class="message success" *ngIf="successMessage">{{ successMessage }}</div>
+      <div class="message error-box" *ngIf="errorMessage">{{ errorMessage }}</div>
+
+      <button type="submit" [disabled]="loading">{{ loading ? 'Logging in...' : 'Login' }}</button>
+    </form>
+
+    <div class="oauth-divider">or continue with</div>
+
+    <div class="oauth-row">
+      <a class="oauth-button" href="http://localhost:8081/oauth2/authorization/google">
+        <span class="oauth-icon">
+          <svg viewBox="0 0 24 24" aria-hidden="true">
+            <path fill="#4285f4" d="M23.49 12.27c0-.82-.07-1.42-.22-2.05H12.24v3.96h6.47c-.13.99-.84 2.48-2.42 3.48l-.02.13 3.51 2.45.24.02c2.2-1.83 3.47-4.52 3.47-7.99z" />
+            <path fill="#34a853" d="M12.24 22.62c3.14 0 5.78-.93 7.71-2.54l-3.67-2.56c-.98.62-2.3 1.05-4.04 1.05-3.08 0-5.69-1.83-6.62-4.35l-.12.01-3.65 2.55-.05.12c1.92 3.44 5.84 5.72 10.44 5.72z" />
+            <path fill="#fbbc05" d="M5.62 14.22a6.27 6.27 0 0 1-.35-2.03c0-.71.13-1.4.34-2.03l-.01-.13-3.69-2.58-.12.05A9.9 9.9 0 0 0 .74 12.19c0 1.68.43 3.26 1.18 4.65l3.7-2.62z" />
+            <path fill="#ea4335" d="M12.24 5.82c2.18 0 3.65.85 4.49 1.55l3.28-2.89c-2.02-1.69-4.63-2.72-7.77-2.72-4.6 0-8.52 2.28-10.44 5.72l3.69 2.66c.94-2.52 3.66-4.32 6.75-4.32z" />
+          </svg>
+        </span>
+        <span>Continue with Google</span>
+      </a>
+      <a class="oauth-button" href="http://localhost:8081/oauth2/authorization/github">
+        <span class="oauth-icon">
+          <svg viewBox="0 0 24 24" aria-hidden="true">
+            <path fill="#181717" d="M12 1.5C6.2 1.5 1.5 6.31 1.5 12.23c0 4.74 3.01 8.75 7.18 10.17.53.1.72-.23.72-.52v-2.01c-2.92.65-3.54-1.26-3.54-1.26-.48-1.25-1.17-1.58-1.17-1.58-.95-.67.07-.66.07-.66 1.05.08 1.61 1.11 1.61 1.11.94 1.64 2.46 1.17 3.06.89.09-.69.37-1.17.67-1.43-2.33-.27-4.78-1.19-4.78-5.31 0-1.17.41-2.13 1.09-2.88-.11-.27-.47-1.36.1-2.84 0 0 .89-.29 2.89 1.1A9.83 9.83 0 0 1 12 6.65c.9 0 1.79.12 2.63.36 2-1.39 2.88-1.1 2.88-1.1.58 1.48.22 2.57.11 2.84.68.75 1.09 1.71 1.09 2.88 0 4.13-2.46 5.04-4.8 5.31.38.33.72.99.72 2v2.94c0 .29.19.63.73.52 4.16-1.42 7.16-5.43 7.16-10.17C22.5 6.31 17.8 1.5 12 1.5z" />
+          </svg>
+        </span>
+        <span>Continue with Github</span>
+      </a>
+    </div>
+
+    <p class="footer-text">
+      Need an account?
+      <a routerLink="/register">Register</a>
+    </p>
+  </div>
+</div>
