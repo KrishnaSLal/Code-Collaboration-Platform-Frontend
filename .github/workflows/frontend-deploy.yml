@@ -20,7 +20,11 @@ jobs:
           node-version: 20
 
       - name: Frontend SonarCloud Scan
+<<<<<<< Updated upstream
         uses: sonarsource/sonarqube-scan-action@master
+=======
+        uses: SonarSource/sonarqube-scan-action@v6
+>>>>>>> Stashed changes
         env:
           SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
           SONAR_HOST_URL: https://sonarcloud.io
