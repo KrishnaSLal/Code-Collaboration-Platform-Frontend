@@ -60,12 +60,19 @@ jobs:
             mkdir -p ~/CodeSync && cd ~/CodeSync
             
             # Auto-clone or pull Frontend
-            if [ ! -d "codesync-frontend" ]; then
-              git clone https://${{ secrets.GH_PAT }}@github.com/${{ github.repository_owner }}/codesync-frontend.git
+            if [ ! -d "Code-Collaboration-Platform-frontend" ]; then
+              git clone https://${{ secrets.GH_PAT }}@github.com/${{ github.repository_owner }}/Code-Collaboration-Platform-frontend.git
             fi
-            cd codesync-frontend && git pull origin main
+            cd Code-Collaboration-Platform-frontend && git pull origin main
             
             # Navigate to backend to find docker-compose.yml
-            cd ../CodeSync-Backend
-            docker-compose up --build -d frontend
-            docker image prune -f
+            # If backend doesn't exist, clone it first
+            cd ..
+            if [ ! -d "Code-Collaboration-Platform-backend" ]; then
+              git clone https://${{ secrets.GH_PAT }}@github.com/${{ github.repository_owner }}/Code-Collaboration-Platform-backend.git
+            fi
+            cd Code-Collaboration-Platform-backend
+            
+            # Try to use sudo docker compose (modern Docker)
+            sudo docker compose up --build -d frontend || sudo docker-compose up --build -d frontend
+            sudo docker image prune -f
