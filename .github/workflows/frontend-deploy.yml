@@ -38,6 +38,10 @@ jobs:
         with:
           args: >
             -Dsonar.organization=${{ secrets.SONAR_ORGANIZATION }}
+            -Dsonar.projectKey=codesync-frontend
+            -Dsonar.projectName="CodeSync Frontend"
+            -Dsonar.sources=src
+            -Dsonar.javascript.lcov.reportPaths=coverage/codesync-frontend/lcov.info
 
   deploy:
     name: Deploy Frontend
