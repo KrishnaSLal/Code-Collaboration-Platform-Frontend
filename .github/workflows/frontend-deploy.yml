@@ -3,6 +3,10 @@ name: Frontend CI/CD
 on:
   push:
     branches: [ "main" ]
+  workflow_dispatch:
+
+env:
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
 
 jobs:
   sonarqube:
@@ -17,7 +21,14 @@ jobs:
       - name: Set up Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: 20
+          node-version: 22
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm install
+
+      - name: Run tests with coverage
+        run: npm run test:coverage
 
       - name: Frontend SonarCloud Scan
         uses: sonarsource/sonarqube-scan-action@master
