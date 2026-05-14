@@ -87,6 +87,6 @@ jobs:
             fi
             cd Code-Collaboration-Platform-backend
             
-            # Build frontend
-            sudo docker compose up --build -d frontend || sudo docker-compose up --build -d frontend
+            # Start EVERYTHING in the compose file
+            sudo docker compose up --build -d || sudo docker-compose up --build -d
             sudo docker image prune -f
