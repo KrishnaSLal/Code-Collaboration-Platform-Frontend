@@ -1,0 +1,55 @@
+name: Frontend CI/CD
+
+on:
+  push:
+    branches: [ "main" ]
+
+jobs:
+  sonarqube:
+    name: Frontend SonarQube
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - name: Frontend SonarCloud Scan
+        uses: sonarsource/sonarqube-scan-action@master
+        env:
+          SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
+          SONAR_HOST_URL: https://sonarcloud.io
+        with:
+          args: >
+            -Dsonar.organization=${{ secrets.SONAR_ORGANIZATION }}
+
+  deploy:
+    name: Deploy Frontend
+    needs: sonarqube
+    runs-on: ubuntu-latest
+    if: github.ref == 'refs/heads/main'
+    steps:
+      - name: SSH and Build Frontend
+        uses: appleboy/ssh-action@master
+        with:
+          host: ${{ secrets.EC2_HOST }}
+          username: ${{ secrets.EC2_USERNAME }}
+          key: ${{ secrets.EC2_SSH_KEY }}
+          script: |
+            mkdir -p ~/CodeSync && cd ~/CodeSync
+            
+            # Auto-clone or pull Frontend
+            if [ ! -d "codesync-frontend" ]; then
+              git clone https://${{ secrets.GH_PAT }}@github.com/${{ github.repository_owner }}/codesync-frontend.git
+            fi
+            cd codesync-frontend && git pull origin main
+            
+            # Navigate to backend to find docker-compose.yml
+            cd ../CodeSync-Backend
+            docker-compose up --build -d frontend
+            docker image prune -f
