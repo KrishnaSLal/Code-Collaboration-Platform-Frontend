@@ -3,6 +3,10 @@ name: Frontend CI/CD
 on:
   push:
     branches: [ "main" ]
+  workflow_dispatch:
+
+env:
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
 
 jobs:
   sonarqube:
@@ -15,22 +19,30 @@ jobs:
           fetch-depth: 0
 
       - name: Set up Node.js
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@v5
         with:
-          node-version: 20
+          node-version: 22
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm install
+
+      - name: Run tests with coverage
+        run: npm run test:coverage
 
       - name: Frontend SonarCloud Scan
-<<<<<<< Updated upstream
-        uses: sonarsource/sonarqube-scan-action@master
-=======
         uses: SonarSource/sonarqube-scan-action@v6
->>>>>>> Stashed changes
         env:
           SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
           SONAR_HOST_URL: https://sonarcloud.io
         with:
           args: >
-            -Dsonar.organization=${{ secrets.SONAR_ORGANIZATION }}
+            -Dsonar.organization=${{ secrets.SONAR_ORGANIZATION || 'krishnaslal' }}
+            -Dsonar.projectKey=codesync-frontend
+            -Dsonar.projectName="CodeSync Frontend"
+            -Dsonar.sources=src
+            -Dsonar.javascript.lcov.reportPaths=coverage/codesync-frontend/lcov.info
+            -Dsonar.qualitygate.wait=false
 
   deploy:
     name: Deploy Frontend
