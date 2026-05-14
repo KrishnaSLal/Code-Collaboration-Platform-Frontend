@@ -37,7 +37,7 @@ jobs:
           SONAR_HOST_URL: https://sonarcloud.io
         with:
           args: >
-            -Dsonar.organization=${{ secrets.SONAR_ORGANIZATION }}
+            -Dsonar.organization=${{ secrets.SONAR_ORGANIZATION || 'krishnaslal' }}
             -Dsonar.projectKey=codesync-frontend
             -Dsonar.projectName="CodeSync Frontend"
             -Dsonar.sources=src
