@@ -11,7 +11,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout code
-        uses: actions/checkout@v5
+        uses: actions/checkout@v4
         with:
           fetch-depth: 0
 
@@ -28,7 +28,7 @@ jobs:
         run: npm run test:coverage
 
       - name: Frontend SonarCloud Scan
-        uses: SonarSource/sonarqube-scan-action@v7
+        uses: SonarSource/sonarqube-scan-action@v5
         env:
           SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
           SONAR_HOST_URL: https://sonarcloud.io
@@ -40,6 +40,7 @@ jobs:
             -Dsonar.projectName="CodeSync Frontend"
             -Dsonar.sources=src
             -Dsonar.javascript.lcov.reportPaths=coverage/codesync-frontend/lcov.info
+            -Dsonar.qualitygate.wait=false
 
   deploy:
     name: Deploy Frontend
