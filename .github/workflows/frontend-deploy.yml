@@ -5,6 +5,9 @@ on:
     branches: [ "main" ]
   workflow_dispatch:
 
+env:
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
+
 jobs:
   sonarqube:
     name: Frontend SonarQube
@@ -28,13 +31,12 @@ jobs:
         run: npm run test:coverage
 
       - name: Frontend SonarCloud Scan
-        uses: SonarSource/sonarqube-scan-action@v5
+        uses: SonarSource/sonarqube-scan-action@v7
         env:
           SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
           SONAR_HOST_URL: https://sonarcloud.io
         with:
           args: >
-            -Dsonar.host.url=https://sonarcloud.io
             -Dsonar.organization=${{ secrets.SONAR_ORGANIZATION }}
             -Dsonar.projectKey=codesync-frontend
             -Dsonar.projectName="CodeSync Frontend"
