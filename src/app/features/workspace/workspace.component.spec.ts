@@ -158,6 +158,18 @@ describe('WorkspaceComponent', () => {
     };
   }
 
+  function joinActiveSession(component: WorkspaceComponent, overrides: Partial<CollabSession> = {}): void {
+    const active = session(overrides);
+    component.sessions = [active];
+    component.participants = [
+      participant({
+        userId: currentUser.userId,
+        participantId: 7,
+        sessionId: active.sessionId
+      })
+    ];
+  }
+
   function createComponent(user: CurrentUser | null = currentUser, queryParams: Record<string, string> = {}) {
     const connected$ = new BehaviorSubject(false);
     const messages$ = new Subject<CollabRealtimeMessage>();
@@ -300,6 +312,14 @@ describe('WorkspaceComponent', () => {
     expect(component.mustJoinActiveSession).toBe(false);
     expect(component.canModifyWorkspace).toBe(true);
     expect(component.isEditorReadOnly).toBe(false);
+
+    component.sessions = [];
+    component.participants = [];
+
+    expect(component.mustStartCollaborationSession).toBe(true);
+    expect(component.canModifyWorkspace).toBe(false);
+    expect(component.canStartCollaborationSession).toBe(true);
+    expect(component.isEditorReadOnly).toBe(true);
   });
 
   it('should build participant, invite, and snapshot labels from known names', () => {
@@ -353,6 +373,7 @@ describe('WorkspaceComponent', () => {
     component.selectedFile = folder;
     component.files = [folder];
     component.filteredFiles = [folder];
+    joinActiveSession(component, { fileId: folder.fileId });
     component.newFileName = ' App.java ';
     component.newFolderName = ' utils ';
     fileService.createFile.mockReturnValue(of(createdFile));
@@ -404,6 +425,7 @@ describe('WorkspaceComponent', () => {
     };
     component.project = project();
     component.selectedFile = file({ language: 'Java' });
+    joinActiveSession(component, { fileId: 10 });
     component.editorContent = 'public class Solution { public static void main(String[] args) {} }';
     component.stdin = 'input';
     executionService.submitExecution.mockReturnValue(of(execution({ jobId: 'job-run' })));
@@ -446,6 +468,7 @@ describe('WorkspaceComponent', () => {
     component.selectedFile = selected;
     component.files = [selected];
     component.filteredFiles = [selected];
+    joinActiveSession(component, { fileId: selected.fileId });
     component.snapshots = [firstSnapshot];
     component.editorContent = 'new content';
     component.snapshotMessage = ' Save work ';
@@ -539,17 +562,17 @@ describe('WorkspaceComponent', () => {
   });
 
   it('should update editor indentation on Enter without changing runtime behavior', () => {
-    const { component } = createComponent();
+    const { component, collabService } = createComponent();
     component.project = project({ language: 'TypeScript' });
     component.selectedFile = file({ language: 'TypeScript', content: 'if (ok) {}' });
+    joinActiveSession(component, { fileId: 10 });
     component.editorContent = 'if (ok) {}';
-    const setSelectionRange = vi.fn();
-    const textarea = {
-      value: 'if (ok) {}',
-      selectionStart: 'if (ok) {'.length,
-      selectionEnd: 'if (ok) {'.length,
-      setSelectionRange
-    };
+    collabService.updateCursor.mockReturnValue(of(participant({ userId: currentUser.userId })));
+    const textarea = document.createElement('textarea');
+    textarea.value = 'if (ok) {}';
+    textarea.selectionStart = 'if (ok) {'.length;
+    textarea.selectionEnd = 'if (ok) {'.length;
+    const setSelectionRange = vi.spyOn(textarea, 'setSelectionRange');
     (component as any).codeEditor = { nativeElement: textarea };
     const event = {
       key: 'Enter',
@@ -908,6 +931,9 @@ describe('WorkspaceComponent', () => {
     component.saveFile();
     expect(component.errorMessage).toBe('Join the active collaboration session before modifying this workspace.');
     component.sessions = [];
+    component.saveFile();
+    expect(component.errorMessage).toBe('Start a collaboration session before modifying this workspace.');
+    joinActiveSession(component, { fileId: selected.fileId });
 
     component.newFileName = 'Broken.py';
     fileService.createFile.mockReturnValue(throwError(() => new Error('offline')));
@@ -1009,6 +1035,8 @@ describe('WorkspaceComponent', () => {
 
     component.passwordProtected = true;
     component.sessionPassword = 'secret';
+    component.sessions = [];
+    component.participants = [];
     collabService.createSession.mockReturnValue(throwError(() => new Error('offline')));
     component.createSession();
     expect(component.errorMessage).toBe('Could not create the collaboration session.');

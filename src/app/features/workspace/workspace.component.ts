@@ -226,8 +226,16 @@ export class WorkspaceComponent implements OnInit, OnDestroy {
     return !!this.activeSession && !this.hasJoinedActiveSession;
   }
 
+  get mustStartCollaborationSession(): boolean {
+    return !this.isReadOnly && !this.activeSession;
+  }
+
   get canModifyWorkspace(): boolean {
-    return !this.isReadOnly && !this.mustJoinActiveSession;
+    return !this.isReadOnly && this.hasJoinedActiveSession;
+  }
+
+  get canStartCollaborationSession(): boolean {
+    return !this.isReadOnly && !!this.project && !!this.selectedFile && !this.selectedFile.folder && !this.activeSession;
   }
 
   get isEditorReadOnly(): boolean {
@@ -809,7 +817,7 @@ export class WorkspaceComponent implements OnInit, OnDestroy {
 
   createSession(): void {
     const currentUser = this.authService.currentUser();
-    if (!this.ensureCanModifyWorkspace() || !currentUser || !this.project || !this.selectedFile) {
+    if (!this.ensureCanStartCollaborationSession() || !currentUser || !this.project || !this.selectedFile) {
       return;
     }
 
@@ -1855,9 +1863,33 @@ export class WorkspaceComponent implements OnInit, OnDestroy {
       return true;
     }
 
-    this.errorMessage = this.mustJoinActiveSession
+    if (this.isReadOnly) {
+      this.errorMessage = 'Please log in before modifying this workspace.';
+      return false;
+    }
+
+    this.errorMessage = this.activeSession
       ? 'Join the active collaboration session before modifying this workspace.'
-      : 'Please log in before modifying this workspace.';
+      : 'Start a collaboration session before modifying this workspace.';
+    return false;
+  }
+
+  private ensureCanStartCollaborationSession(): boolean {
+    if (this.canStartCollaborationSession) {
+      return true;
+    }
+
+    if (this.isReadOnly) {
+      this.errorMessage = 'Please log in before starting a collaboration session.';
+      return false;
+    }
+
+    if (this.activeSession) {
+      this.errorMessage = 'Join the active collaboration session before modifying this workspace.';
+      return false;
+    }
+
+    this.errorMessage = 'Choose a file before starting a collaboration session.';
     return false;
   }
 

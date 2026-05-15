@@ -32,6 +32,11 @@
     <p>Join the session before editing files, running code, creating snapshots, or adding review comments.</p>
   </section>
 
+  <section class="guest-banner" *ngIf="mustStartCollaborationSession">
+    <strong>Collaboration session required.</strong>
+    <p>Start a collaboration session before editing files, running code, creating snapshots, or adding review comments.</p>
+  </section>
+
   <section class="workspace-grid" [class.guest-layout]="isReadOnly">
     <aside class="sidebar">
       <div class="section-head">
@@ -145,6 +150,7 @@
 
         <p class="guest-note" *ngIf="isReadOnly">Read-only preview for guests.</p>
         <p class="guest-note" *ngIf="mustJoinActiveSession">Read-only until you join the active session.</p>
+        <p class="guest-note" *ngIf="mustStartCollaborationSession">Read-only until a collaboration session is started.</p>
         <p class="success" *ngIf="saveMessage">{{ saveMessage }}</p>
       </article>
 
@@ -288,7 +294,7 @@
       <article class="side-panel" *ngIf="selectedFile && !selectedFile.folder">
         <div class="section-head">
           <h2>Collaboration</h2>
-          <button type="button" class="primary-button" *ngIf="canModifyWorkspace" (click)="createSession()">Start session</button>
+          <button type="button" class="primary-button" *ngIf="canStartCollaborationSession" (click)="createSession()">Start session</button>
         </div>
 
         <div class="create-row" *ngIf="!isReadOnly">
