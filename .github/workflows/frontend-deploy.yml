@@ -99,10 +99,14 @@ jobs:
                 exit 1
                 ;;
             esac
+            FRONTEND_HOST="${FRONTEND_URL#https://}"
+            FRONTEND_HOST="${FRONTEND_HOST#http://}"
+            FRONTEND_HOST="${FRONTEND_HOST%%/*}"
             touch .env
-            grep -v '^CODESYNC_FRONTEND_URL=' .env > .env.tmp || true
+            grep -v -e '^CODESYNC_FRONTEND_URL=' -e '^CODESYNC_FRONTEND_HOST=' .env > .env.tmp || true
             mv .env.tmp .env
             printf '\nCODESYNC_FRONTEND_URL=%s\n' "$FRONTEND_URL" >> .env
+            printf 'CODESYNC_FRONTEND_HOST=%s\n' "$FRONTEND_HOST" >> .env
             
             # Start EVERYTHING in the compose file
             sudo docker compose up --build -d || sudo docker-compose up --build -d
