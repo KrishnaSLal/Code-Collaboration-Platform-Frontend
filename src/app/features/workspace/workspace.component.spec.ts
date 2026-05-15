@@ -849,8 +849,21 @@ describe('WorkspaceComponent', () => {
       execution({ jobId: 'old', fileId: 12, createdAt: '2020-01-01T00:00:00Z' }),
       execution({ jobId: 'new', fileId: 12, createdAt: new Date(Date.now() + 1000).toISOString() })
     ]);
-    expect(component.executions.map((item) => item.jobId)).toEqual(['new']);
+    expect(component.executions.map((item) => item.jobId)).toEqual(['new', 'old']);
     expect(component.selectedFileExecutionCount).toBe(2);
+
+    (component as any).applyProjectExecutions([
+      execution({
+        jobId: 'new',
+        fileId: 12,
+        status: 'RUNNING',
+        stdout: '',
+        exitCode: null,
+        completedAt: null,
+        createdAt: new Date(Date.now() + 1000).toISOString()
+      })
+    ]);
+    expect(component.executions.find((item) => item.jobId === 'new')?.stdout).toBe('ok');
 
     expect((component as any).resolveInviteRecipientId('13')).toBe(13);
     expect((component as any).resolveInviteRecipientId('contributor@example.com')).toBe(13);

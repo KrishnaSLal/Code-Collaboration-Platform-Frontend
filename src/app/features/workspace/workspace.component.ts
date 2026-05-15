@@ -122,7 +122,6 @@ export class WorkspaceComponent implements OnInit, OnDestroy {
   private readonly subscriptions = new Subscription();
   private workspaceLiveSubscriptions = new Subscription();
   private fileContextLiveSubscriptions = new Subscription();
-  private readonly sessionStartedAt = new Date();
   private linkedSessionId: string | null = null;
   private linkedSessionFileId: number | null = null;
   private joiningLinkedSessionId: string | null = null;
@@ -311,6 +310,7 @@ export class WorkspaceComponent implements OnInit, OnDestroy {
     this.diffResult = '';
     this.resetEditorCursorPresence();
     this.updateSelectedFileExecutionCount();
+    this.applyVisibleExecutions();
     this.saveMessage = '';
     this.loadFileContext(file.fileId);
   }
@@ -398,6 +398,8 @@ export class WorkspaceComponent implements OnInit, OnDestroy {
         this.filteredFiles = this.sortFiles(this.filteredFiles.filter((file) => file.fileId !== this.selectedFile?.fileId));
         this.selectedFile = this.filteredFiles.find((file) => !file.folder) || null;
         this.editorContent = this.selectedFile?.content || '';
+        this.updateSelectedFileExecutionCount();
+        this.applyVisibleExecutions();
         if (this.selectedFile) {
           this.loadFileContext(this.selectedFile.fileId);
         } else {
@@ -479,8 +481,8 @@ export class WorkspaceComponent implements OnInit, OnDestroy {
       })
       .subscribe({
         next: (execution) => {
-          this.executions = this.sortExecutions([execution, ...this.executions]);
-          this.projectExecutions = this.sortExecutions([execution, ...this.projectExecutions]);
+          this.projectExecutions = this.mergeExecutions(this.projectExecutions, [execution]);
+          this.applyVisibleExecutions();
           this.updateSelectedFileExecutionCount();
         },
         error: () => {
@@ -606,9 +608,8 @@ export class WorkspaceComponent implements OnInit, OnDestroy {
   cancelExecution(jobId: string): void {
     this.executionService.cancelExecution(jobId).subscribe({
       next: (updatedExecution) => {
-        this.executions = this.executions.map((execution) =>
-          execution.jobId === updatedExecution.jobId ? updatedExecution : execution
-        );
+        this.projectExecutions = this.mergeExecutions(this.projectExecutions, [updatedExecution]);
+        this.applyVisibleExecutions();
       },
       error: () => {
         this.errorMessage = 'Could not cancel the execution.';
@@ -1340,6 +1341,7 @@ export class WorkspaceComponent implements OnInit, OnDestroy {
         this.selectedFile = sortedFiles.find((file) => !file.folder) || null;
         this.editorContent = this.selectedFile?.content || '';
         this.updateSelectedFileExecutionCount();
+        this.applyVisibleExecutions();
         this.snapshots = [];
         this.comments = [];
 
@@ -1353,6 +1355,7 @@ export class WorkspaceComponent implements OnInit, OnDestroy {
       this.selectedFile = sortedFiles.find((file) => !file.folder) || null;
       this.editorContent = this.selectedFile?.content || '';
       this.updateSelectedFileExecutionCount();
+      this.applyVisibleExecutions();
 
       if (this.selectedFile) {
         this.loadFileContext(this.selectedFile.fileId);
@@ -1367,15 +1370,84 @@ export class WorkspaceComponent implements OnInit, OnDestroy {
   }
 
   private applyProjectExecutions(executions: ExecutionResponse[]): void {
-    this.projectExecutions = this.sortExecutions(executions);
-    this.executions = this.sortExecutions(
-      executions.filter((execution) => new Date(execution.createdAt) >= this.sessionStartedAt)
-    );
+    this.projectExecutions = this.mergeExecutions(this.projectExecutions, executions);
+    this.applyVisibleExecutions();
     this.updateSelectedFileExecutionCount();
     const currentUser = this.authService.currentUser();
     if (currentUser) {
       this.hasExecutionPass = this.paymentService.hasExecutionPass(currentUser.userId);
     }
+  }
+
+  private applyVisibleExecutions(): void {
+    const selectedFileId = this.selectedFile?.fileId;
+    this.executions = selectedFileId
+      ? this.sortExecutions(this.projectExecutions.filter((execution) => execution.fileId === selectedFileId))
+      : [];
+  }
+
+  private mergeExecutions(
+    existingExecutions: ExecutionResponse[],
+    incomingExecutions: ExecutionResponse[]
+  ): ExecutionResponse[] {
+    const merged = new Map<string, ExecutionResponse>();
+
+    [...existingExecutions, ...incomingExecutions].forEach((execution) => {
+      const current = merged.get(execution.jobId);
+      merged.set(execution.jobId, this.pickMoreCompleteExecution(current, execution));
+    });
+
+    return this.sortExecutions([...merged.values()]);
+  }
+
+  private pickMoreCompleteExecution(
+    current: ExecutionResponse | undefined,
+    candidate: ExecutionResponse
+  ): ExecutionResponse {
+    if (!current) {
+      return candidate;
+    }
+
+    const currentScore = this.executionCompletenessScore(current);
+    const candidateScore = this.executionCompletenessScore(candidate);
+
+    if (candidateScore !== currentScore) {
+      return candidateScore > currentScore ? candidate : current;
+    }
+
+    return this.executionTimestamp(candidate.completedAt || candidate.createdAt) >=
+      this.executionTimestamp(current.completedAt || current.createdAt)
+      ? candidate
+      : current;
+  }
+
+  private executionCompletenessScore(execution: ExecutionResponse): number {
+    const status = execution.status.toUpperCase();
+    const terminalScore = ['COMPLETED', 'FAILED', 'TIMED_OUT', 'CANCELLED'].includes(status)
+      ? 8
+      : status === 'RUNNING'
+        ? 4
+        : status === 'QUEUED'
+          ? 2
+          : 0;
+
+    return (
+      terminalScore +
+      (execution.stdout ? 2 : 0) +
+      (execution.stderr ? 2 : 0) +
+      (execution.completedAt ? 1 : 0) +
+      (execution.exitCode !== null && execution.exitCode !== undefined ? 1 : 0)
+    );
+  }
+
+  private executionTimestamp(value: string | null): number {
+    if (!value) {
+      return 0;
+    }
+
+    const normalizedValue = /(?:Z|[+-]\d{2}:?\d{2})$/.test(value) ? value : `${value}Z`;
+    const timestamp = new Date(normalizedValue).getTime();
+    return Number.isNaN(timestamp) ? 0 : timestamp;
   }
 
   private applySnapshots(snapshots: Snapshot[]): void {
